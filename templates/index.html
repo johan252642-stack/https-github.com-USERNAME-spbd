@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>SPBD Dashboard</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+
+<h2>SPBD Dashboard</h2>
+
+<canvas id="chart"></canvas>
+
+<script>
+let data = {{ data|tojson }};
+let c={critical:0,high:0,medium:0};
+
+data.forEach(d=>{
+ d.vulns.forEach(v=>{c[v.severity]++})
+});
+
+new Chart(document.getElementById("chart"),{
+ type:'bar',
+ data:{
+  labels:["Critical","High","Medium"],
+  datasets:[{data:[c.critical,c.high,c.medium]}]
+ }
+});
+</script>
+
+</body>
+</html>

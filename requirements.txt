@@ -1,0 +1,7 @@
+flask
+flask-socketio
+requests
+colorama
+reportlab
+matplotlib
+urllib3

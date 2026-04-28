@@ -36,8 +36,6 @@ def analyze(base, response, param, payload, vtype):
 
 
 def payload_for(param):
-    p = param.lower()
-
     return {
         "type": "auto",
         "all": [

@@ -1,204 +1,145 @@
 #!/bin/bash
 
-LOG="install.log"
+echo "[SPBD] PRO INSTALLER AUTO-REPAIR 🔥"
 
-echo "[SPBD] PRO INSTALLER" | tee $LOG
+LOG="install.log"
+exec > >(tee -a $LOG) 2>&1
 
 run() {
-    eval "$1" >>$LOG 2>&1
+    eval "$1"
 }
 
-check_cmd() {
-    command -v "$1" >/dev/null 2>&1
-}
-
-# =========================
-# 🌐 CHECK INTERNET
-# =========================
 echo "[+] Checking internet..."
-ping -c 1 google.com >/dev/null 2>&1
-if [ $? -ne 0 ]; then
-    echo "[!] No internet connection"
-    exit 1
-fi
+ping -c 1 google.com >/dev/null 2>&1 || { echo "[!] No internet"; exit 1; }
 
-# =========================
-# 🧠 DETECT OS
-# =========================
-OS="$(uname -s)"
-echo "[+] OS: $OS"
-
-# =========================
-# 📦 DETECT PYTHON
-# =========================
-if check_cmd python3; then
-    PY="python3"
-elif check_cmd python; then
-    PY="python"
-else
-    echo "[!] Python not found. Install Python first."
-    exit 1
-fi
-
-# =========================
-# 📦 DETECT PIP
-# =========================
-if check_cmd pip3; then
-    PIP="pip3"
-elif check_cmd pip; then
-    PIP="pip"
-else
-    echo "[!] pip not found. Installing..."
-    run "$PY -m ensurepip"
-    PIP="pip"
-fi
-
-# =========================
-# 📱 TERMUX
-# =========================
+# ===== DETECT OS =====
 if [ -d "/data/data/com.termux/files/usr" ]; then
     echo "[+] Termux detected"
+    PKG="pkg"
+    PY="python"
+    PIP="pip"
+    BIN="$PREFIX/bin"
 
     run "pkg update -y"
     run "pkg upgrade -y"
-    run "pkg install python git curl unzip golang -y"
-
-    BIN="$PREFIX/bin"
-
-    read -p "Install sqlmap? (y/n): " opt
-    [[ $opt == "y" ]] && run "pkg install sqlmap -y"
-
-    read -p "Install nuclei? (y/n): " opt
-    if [[ $opt == "y" ]]; then
-        run "go install github.com/projectdiscovery/nuclei/v3/cmd/nuclei@latest"
-        [ -f ~/go/bin/nuclei ] && run "install -m 755 ~/go/bin/nuclei $BIN/"
-    fi
-
-# =========================
-# 🐧 LINUX / WSL
-# =========================
-elif [[ "$OS" == "Linux" ]]; then
-    echo "[+] Linux detected"
-
-    run "sudo apt update -y"
-    run "sudo apt install python3 python3-venv python3-pip git curl unzip -y"
-
-    BIN="/usr/local/bin"
-
-    read -p "Install sqlmap? (y/n): " opt
-    [[ $opt == "y" ]] && run "sudo apt install sqlmap -y"
-
-    read -p "Install nuclei? (y/n): " opt
-    if [[ $opt == "y" ]]; then
-        run "curl -L https://github.com/projectdiscovery/nuclei/releases/latest/download/nuclei-linux-amd64.zip -o nuclei.zip"
-        run "unzip -o nuclei.zip"
-        run "chmod +x nuclei"
-        run "sudo mv nuclei $BIN/"
-        run "rm -f nuclei.zip"
-    fi
-
-# =========================
-# 🪟 WINDOWS (GIT BASH)
-# =========================
-elif [[ "$OS" == "MINGW"* ]] || [[ "$OS" == "CYGWIN"* ]]; then
-    echo "[+] Windows detected"
-
-    echo "[!] Make sure Python is installed"
-    echo "[!] Recommended: use WSL for full features"
+    run "pkg install python git curl unzip -y"
 
 else
-    echo "[!] Unsupported OS"
+    echo "[+] Linux detected"
+    PKG="apt"
+    PY="python3"
+    PIP="pip3"
+    BIN="/usr/bin"
+
+    run "apt update -y"
+    run "apt install -y python3 python3-venv python3-pip git curl unzip"
 fi
 
-# =========================
-# 📁 CHECK FILES
-# =========================
+# ===== OPTIONAL TOOLS =====
+read -p "Install sqlmap? (y/n): " sqlmap_install
+if [[ "$sqlmap_install" == "y" ]]; then
+    run "$PKG install -y sqlmap"
+fi
+
+read -p "Install nuclei? (y/n): " nuclei_install
+if [[ "$nuclei_install" == "y" ]]; then
+    if command -v go >/dev/null; then
+        run "go install github.com/projectdiscovery/nuclei/v3/cmd/nuclei@latest"
+        run "cp ~/go/bin/nuclei $BIN/"
+    else
+        echo "[!] Go not installed, skipping nuclei"
+    fi
+fi
+
+# ===== CHECK FILE =====
 echo "[+] Checking project files..."
 
-FILES=("spbd.py" "ai.py" "ai_elite.py")
+REQUIRED=("spbd.py" "ai.py" "ai_elite.py")
 
-for f in "${FILES[@]}"; do
+for f in "${REQUIRED[@]}"; do
     if [ ! -f "$f" ]; then
-        echo "[!] Missing: $f"
+        echo "[!] Missing $f → cloning fresh repo..."
+        rm -rf *
+        git clone https://github.com/johan252642-stack/spbd.git .
+        break
     fi
 done
 
-# =========================
-# 🐍 VENV
-# =========================
+# ===== FIX BROKEN CORE =====
+echo "[+] Checking core structure..."
+
+if [ -d "core/core" ]; then
+    echo "[!] Broken core detected → repairing..."
+
+    find core -type f -name "*.py" -exec mv -t core {} +
+    rm -rf core/core
+
+    echo "[✓] Core repaired"
+fi
+
+# ===== SETUP VENV =====
 echo "[+] Creating virtual environment..."
 
 if [ ! -d "venv" ]; then
-    run "$PY -m venv venv"
+    $PY -m venv venv
 fi
 
-source venv/bin/activate 2>/dev/null
+source venv/bin/activate
 
-# =========================
-# 📦 INSTALL DEPENDENCIES
-# =========================
 echo "[+] Installing Python packages..."
-
-$PIP install --upgrade pip >>$LOG 2>&1
+$PIP install --upgrade pip
 
 $PIP install \
 requests \
-beautifulsoup4 \
 flask \
+flask-socketio \
 colorama \
-urllib3 >>$LOG 2>&1
+reportlab \
+matplotlib \
+urllib3 \
+beautifulsoup4
 
-# =========================
-# 🔧 PERMISSIONS
-# =========================
-chmod +x spbd.py 2>/dev/null
-chmod +x ai.py 2>/dev/null
-chmod +x ai_elite.py 2>/dev/null
+# ===== FIX PERMISSION =====
+chmod +x *.py 2>/dev/null
 
-# =========================
-# ▶️ RUN SCRIPT
-# =========================
+# ===== CREATE RUNNER =====
 echo "[+] Creating runner..."
 
 cat <<EOF > run_spbd.sh
 #!/bin/bash
-DIR="\$(cd "\$(dirname "\$0")" && pwd)"
+DIR="\$(cd "\$(dirname "\$(readlink -f "\$0")")" && pwd)"
 
 if [ -f "\$DIR/venv/bin/activate" ]; then
     source "\$DIR/venv/bin/activate"
 fi
 
-if [[ "\$1" == "--web" ]]; then
-    python3 "\$DIR/spbd.py" --web
-else
-    python3 "\$DIR/spbd.py" "\$@"
-fi
+python3 "\$DIR/spbd.py" "\$@"
 EOF
 
 chmod +x run_spbd.sh
 
-# =========================
-# 🌍 GLOBAL COMMAND
-# =========================
-echo "[+] Creating global command..."
+# ===== FIX SYMLINK (AUTO REPAIR) =====
+echo "[+] Fixing global command..."
 
-if [ -w "/usr/bin" ]; then
-    run "sudo ln -sf \$(pwd)/run_spbd.sh /usr/bin/spbd"
-elif [ -n "$PREFIX" ]; then
-    run "ln -sf \$(pwd)/run_spbd.sh $PREFIX/bin/spbd"
+rm -f $BIN/spbd
+
+ln -s $(pwd)/run_spbd.sh $BIN/spbd
+
+# ===== VERIFY =====
+if [ -L "$BIN/spbd" ]; then
+    echo "[✓] Command fixed: spbd"
+else
+    echo "[!] Failed to create command"
 fi
 
-# =========================
-# 📄 SUMMARY
-# =========================
+# ===== DONE =====
 echo ""
 echo "==============================="
-echo "[✓] INSTALL COMPLETE"
+echo "[✓] INSTALL COMPLETE 🔥"
 echo ""
 echo "Run:"
-echo "  ./run_spbd.sh"
 echo "  spbd"
 echo "  spbd --web"
 echo ""
-echo "Log saved to: $LOG"
+echo "Log: install.log"
 echo "==============================="

@@ -5,13 +5,11 @@ from urllib.parse import urljoin
 visited = set()
 
 def crawl(url, depth=2):
-    urls = []
-
     if depth == 0 or url in visited:
-        return urls
+        return []
 
     visited.add(url)
-    urls.append(url)
+    urls = [url]
 
     try:
         r = requests.get(url, timeout=5)

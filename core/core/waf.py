@@ -1,18 +1,18 @@
-def detect_waf(response):
-    waf_signatures = [
-        "cloudflare",
-        "sucuri",
-        "akamai",
-        "incapsula"
-    ]
+import requests
 
-    for w in waf_signatures:
-        if w in response.lower():
-            return w
+def detect_waf(url):
+    try:
+        r = requests.get(url, timeout=5)
+        h = str(r.headers).lower()
 
-    return None
+        if "cloudflare" in h:
+            return "Cloudflare"
+        if "sucuri" in h:
+            return "Sucuri"
+        if "akamai" in h:
+            return "Akamai"
 
+    except:
+        pass
 
-def bypass_payload(payload):
-    # simple bypass
-    return payload.replace(" ", "/**/")
+    return "Unknown"

@@ -9,7 +9,9 @@ def detect_waf(url):
             return "Cloudflare"
         if "sucuri" in h:
             return "Sucuri"
+        if "akamai" in h:
+            return "Akamai"
     except:
         pass
 
-    return "Unknown"
+    return "None"

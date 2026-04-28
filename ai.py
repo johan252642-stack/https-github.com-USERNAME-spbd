@@ -1,35 +1,34 @@
-import re
-
-def analyze(base, response, param, payload, vuln_type):
-    if base == response:
-        return None
-
-    confidence = 0
+def analyze(base, response, param, payload, vtype):
+    score = 0
     reason = []
 
     if payload in response:
-        confidence += 50
-        reason.append("Payload reflected")
+        score += 50
+        reason.append("reflected payload")
 
-    if "sql" in response.lower():
-        confidence += 40
-        reason.append("SQL error detected")
+    errors = ["sql", "syntax", "mysql", "warning", "ORA-"]
+    if any(e in response.lower() for e in errors):
+        score += 40
+        reason.append("sql error detected")
 
-    if "root:x:" in response:
-        confidence += 60
-        reason.append("Sensitive file exposed")
+    if "root:x:" in response or "/bin/bash" in response:
+        score += 60
+        reason.append("sensitive file exposed")
 
-    if "127.0.0.1" in response:
-        confidence += 50
-        reason.append("Internal response")
+    if "127.0.0.1" in response or "localhost" in response:
+        score += 50
+        reason.append("internal service response")
 
-    if confidence >= 40:
+    if len(response) != len(base):
+        score += 10
+
+    if score >= 40:
         return {
-            "type": vuln_type,
+            "type": vtype,
             "param": param,
             "payload": payload,
-            "confidence": confidence,
-            "severity": "High" if confidence >= 60 else "Medium",
+            "confidence": score,
+            "severity": "Critical" if score >= 80 else "High" if score >= 60 else "Medium",
             "reason": ", ".join(reason)
         }
 
@@ -39,16 +38,14 @@ def analyze(base, response, param, payload, vuln_type):
 def payload_for(param):
     p = param.lower()
 
-    if "id" in p:
-        return {"type": "sqli", "all": ["1 OR 1=1", "'--"]}
-
-    if "search" in p or "q" in p:
-        return {"type": "xss", "all": ["<script>alert(1)</script>"]}
-
-    if "file" in p:
-        return {"type": "lfi", "all": ["../../etc/passwd"]}
-
-    if "url" in p:
-        return {"type": "ssrf", "all": ["http://127.0.0.1"]}
-
-    return {"type": "generic", "all": ["test123"]}
+    return {
+        "type": "auto",
+        "all": [
+            "1 OR 1=1",
+            "'--",
+            "<script>alert(1)</script>",
+            "../../etc/passwd",
+            "http://127.0.0.1",
+            "test123"
+        ]
+    }

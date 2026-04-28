@@ -1,52 +1,49 @@
 from flask import Flask, render_template_string
-import json
+from flask_socketio import SocketIO
 
 app = Flask(__name__)
+socketio = SocketIO(app)
 
 HTML = """
-<!DOCTYPE html>
 <html>
 <head>
-<title>SPBD Dashboard</title>
-<style>
-body {background:#0d1117;color:white;font-family:Arial;}
-.card {background:#161b22;padding:20px;margin:10px;border-radius:10px;}
-.red{color:red;} .orange{color:orange;}
-</style>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
 </head>
-<body>
+<body style="background:#111;color:white">
 
-<h1>SPBD Dashboard</h1>
+<h1>🔥 SPBD DASHBOARD</h1>
+<canvas id="chart"></canvas>
+<div id="vulns"></div>
 
-<div class="card">
-<h2>Target</h2>
-<p>{{d.target}}</p>
-</div>
+<script>
+var socket = io();
 
-<div class="card">
-<h2>Risk Score</h2>
-<p class="red">{{d.risk_score}} / 100</p>
-<p>{{d.analysis.level}}</p>
-</div>
+var chart = new Chart(document.getElementById("chart"), {
+    type: 'bar',
+    data: {
+        labels:["CRITICAL","HIGH","MEDIUM","LOW"],
+        datasets:[{data:[0,0,0,0]}]
+    }
+});
 
-<div class="card">
-<h2>WAF</h2>
-<p>{{d.waf}}</p>
-</div>
+socket.on("update", function(data){
+    chart.data.datasets[0].data=[
+        data.stats.CRITICAL,
+        data.stats.HIGH,
+        data.stats.MEDIUM,
+        data.stats.LOW
+    ];
+    chart.update();
 
-<div class="card">
-<h2>Vulnerabilities</h2>
-{% for v in d.vulns %}
-<p class="orange">{{v.type}} → {{v.param}} ({{v.confidence}}%)</p>
-{% endfor %}
-</div>
+    let html="";
+    data.vulns.forEach(v=>{
+        html += `<p>[${v.severity}] ${v.type}</p>`;
+    });
 
-<div class="card">
-<h2>Exploits</h2>
-{% for e in d.exploits %}
-<p>{{e.type}} → {{e.poc}}</p>
-{% endfor %}
-</div>
+    document.getElementById("vulns").innerHTML=html;
+});
+</script>
 
 </body>
 </html>
@@ -54,5 +51,7 @@ body {background:#0d1117;color:white;font-family:Arial;}
 
 @app.route("/")
 def home():
-    d = json.load(open("session.json"))
-    return render_template_string(HTML, d=d)
+    return render_template_string(HTML)
+
+def run():
+    socketio.run(app, port=5000)

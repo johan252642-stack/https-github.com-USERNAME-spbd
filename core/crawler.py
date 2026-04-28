@@ -4,6 +4,8 @@ from urllib.parse import urljoin
 
 visited = set()
 
+COMMON = ["admin","login","dashboard","api",".env","backup"]
+
 def crawl(url, depth=2):
     if depth == 0 or url in visited:
         return []
@@ -19,6 +21,10 @@ def crawl(url, depth=2):
             link = urljoin(url, a["href"])
             if link.startswith("http"):
                 urls += crawl(link, depth-1)
+
+        for p in COMMON:
+            urls.append(urljoin(url, p))
+
     except:
         pass
 

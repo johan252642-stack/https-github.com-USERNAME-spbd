@@ -9,50 +9,42 @@ HTML = """
 <head>
 <title>SPBD Dashboard</title>
 <style>
-body { background:#0d1117; color:white; font-family:Arial; }
-.card { background:#161b22; padding:20px; margin:10px; border-radius:10px; }
-.high { color:red; font-weight:bold; }
-.medium { color:orange; }
+body {background:#0d1117;color:white;font-family:Arial;}
+.card {background:#161b22;padding:20px;margin:10px;border-radius:10px;}
+.red{color:red;} .orange{color:orange;}
 </style>
 </head>
-
 <body>
 
-<h1>SPBD Dashboard</h1>
+<h1>SPBD AI Dashboard</h1>
 
 <div class="card">
 <h2>Target</h2>
-<p>{{data.target}}</p>
+<p>{{d.target}}</p>
 </div>
 
 <div class="card">
-<h2>Risk Score</h2>
-<p style="font-size:30px;color:red;">{{data.risk_score}} / 100</p>
+<h2>Risk</h2>
+<p class="red">{{d.risk_score}} / 100</p>
+<p>{{d.analysis.level}}</p>
 </div>
 
 <div class="card">
 <h2>WAF</h2>
-<p>{{data.waf}}</p>
+<p>{{d.waf}}</p>
 </div>
 
 <div class="card">
 <h2>Vulnerabilities</h2>
-{% for v in data.vulns %}
-<p class="high">{{v.type}} → {{v.param}}</p>
+{% for v in d.vulns %}
+<p class="orange">{{v.type}} → {{v.param}} ({{v.confidence}}%)</p>
 {% endfor %}
 </div>
 
 <div class="card">
 <h2>Exploits</h2>
-{% for e in data.exploits %}
-<p class="medium">{{e.type}} → {{e.poc}}</p>
-{% endfor %}
-</div>
-
-<div class="card">
-<h2>URLs</h2>
-{% for u in data.urls %}
-<p>{{u}}</p>
+{% for e in d.exploits %}
+<p>{{e.type}} → {{e.poc}}</p>
 {% endfor %}
 </div>
 
@@ -62,5 +54,5 @@ body { background:#0d1117; color:white; font-family:Arial; }
 
 @app.route("/")
 def home():
-    data = json.load(open("session.json"))
-    return render_template_string(HTML, data=data)
+    d = json.load(open("session.json"))
+    return render_template_string(HTML, d=d)

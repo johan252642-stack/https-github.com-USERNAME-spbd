@@ -16,7 +16,7 @@ body {background:#0d1117;color:white;font-family:Arial;}
 </head>
 <body>
 
-<h1>SPBD AI Dashboard</h1>
+<h1>SPBD Dashboard</h1>
 
 <div class="card">
 <h2>Target</h2>
@@ -24,7 +24,7 @@ body {background:#0d1117;color:white;font-family:Arial;}
 </div>
 
 <div class="card">
-<h2>Risk</h2>
+<h2>Risk Score</h2>
 <p class="red">{{d.risk_score}} / 100</p>
 <p>{{d.analysis.level}}</p>
 </div>

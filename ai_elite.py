@@ -2,14 +2,12 @@ def analyze_target(url, vulns):
     score = 0
 
     for v in vulns:
-        if v["type"] == "sqli":
+        if v["severity"] == "Critical":
+            score += 70
+        elif v["severity"] == "High":
             score += 50
-        elif v["type"] == "xss":
+        elif v["severity"] == "Medium":
             score += 30
-        elif v["type"] == "lfi":
-            score += 40
-        elif v["type"] == "ssrf":
-            score += 60
 
     level = "LOW"
     if score > 50: level = "MEDIUM"

@@ -11,8 +11,8 @@ HTML = """
 <style>
 body { background:#0d1117; color:white; font-family:Arial; }
 .card { background:#161b22; padding:20px; margin:10px; border-radius:10px; }
-.medium { color:orange; font-weight:bold; }
 .high { color:red; font-weight:bold; }
+.medium { color:orange; }
 </style>
 </head>
 
@@ -26,6 +26,16 @@ body { background:#0d1117; color:white; font-family:Arial; }
 </div>
 
 <div class="card">
+<h2>Risk Score</h2>
+<p style="font-size:30px;color:red;">{{data.risk_score}} / 100</p>
+</div>
+
+<div class="card">
+<h2>WAF</h2>
+<p>{{data.waf}}</p>
+</div>
+
+<div class="card">
 <h2>Vulnerabilities</h2>
 {% for v in data.vulns %}
 <p class="high">{{v.type}} → {{v.param}}</p>
@@ -34,16 +44,16 @@ body { background:#0d1117; color:white; font-family:Arial; }
 
 <div class="card">
 <h2>Exploits</h2>
-{% if data.exploits %}
-    {% for e in data.exploits %}
-        <p class="medium">
-        {{e.type}} →
-        {{ e.result if e.result else e.poc }}
-        </p>
-    {% endfor %}
-{% else %}
-<p>No exploit</p>
-{% endif %}
+{% for e in data.exploits %}
+<p class="medium">{{e.type}} → {{e.poc}}</p>
+{% endfor %}
+</div>
+
+<div class="card">
+<h2>URLs</h2>
+{% for u in data.urls %}
+<p>{{u}}</p>
+{% endfor %}
 </div>
 
 </body>

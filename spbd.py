@@ -1,4 +1,4 @@
-import json, requests, sys
+import json, requests, sys, time
 from urllib.parse import urlparse, parse_qs
 from concurrent.futures import ThreadPoolExecutor
 
@@ -12,31 +12,46 @@ from core.scorer import calculate_score
 from web.dashboard import app
 
 
-def scan_url(url):
-    vulns = []
+def inject(url, payload):
+    p = urlparse(url)
+    qs = parse_qs(p.query)
 
-    if "?" not in url:
-        return vulns
+    if not qs:
+        return url + "?test=" + payload
+
+    for k in qs:
+        qs[k] = payload
+
+    query = "&".join(f"{k}={v}" for k,v in qs.items())
+    return f"{p.scheme}://{p.netloc}{p.path}?{query}"
+
+
+def scan(url):
+    vulns = []
 
     try:
         base = requests.get(url, timeout=5).text
     except:
         return vulns
 
-    for param in parse_qs(urlparse(url).query):
-        pdata = payload_for(param)
+    params = parse_qs(urlparse(url).query)
+    if not params:
+        params = {"test":["1"]}
 
-        for payload in pdata["all"]:
+    for param in params:
+        for payload in payload_for(param)["all"]:
             try:
-                test_url = url.replace(f"{param}=", f"{param}={payload}")
-                res = requests.get(test_url, timeout=5).text
+                u = inject(url, payload)
+                res = requests.get(u, timeout=5).text
 
-                ai = analyze(base, res, param, payload, pdata["type"])
+                ai = analyze(base, res, param, payload, "auto")
 
                 if ai:
-                    print(f"[!] {ai['type']} → {param}")
+                    print(f"[{ai['severity']}] {param}")
                     vulns.append(ai)
                     break
+
+                time.sleep(0.3)
 
             except:
                 pass
@@ -53,7 +68,7 @@ def main():
     all_vulns = []
 
     def worker(u):
-        all_vulns.extend(scan_url(u))
+        all_vulns.extend(scan(u))
 
     with ThreadPoolExecutor(max_workers=5) as exe:
         exe.map(worker, urls)

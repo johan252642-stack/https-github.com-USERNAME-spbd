@@ -1,43 +1,32 @@
-import re
+def analyze(base, new, param, payload, ptype):
+    score = 0
+    reasons = []
 
-def payload_for(param):
-    p = param.lower()
+    if base != new:
+        score += 2
+        reasons.append("Response changed")
 
-    if "id" in p or "user" in p:
+    if payload in new:
+        score += 3
+        reasons.append("Payload reflected")
+
+    errors = ["sql", "syntax", "mysql", "warning"]
+    if any(e in new.lower() for e in errors):
+        score += 4
+        reasons.append("SQL error detected")
+
+    if "root:x" in new:
+        score += 5
+        reasons.append("LFI detected")
+
+    if score >= 5:
         return {
-            "type": "SQLi",
-            "all": ["' OR 1=1--", "' OR 'a'='a"]
-        }
-
-    if "q" in p or "search" in p:
-        return {
-            "type": "XSS",
-            "all": ["<script>alert(1)</script>"]
-        }
-
-    return {
-        "type": "Generic",
-        "all": ["test123"]
-    }
-
-
-def analyze(base, injected, param, payload, typ):
-    if not base or not injected:
-        return None
-
-    diff = abs(len(base) - len(injected))
-
-    # error detection
-    errors = ["sql", "mysql", "error", "warning", "syntax"]
-
-    err_flag = any(e in injected.lower() for e in errors)
-
-    if diff > 50 or err_flag:
-        return {
-            "type": typ,
             "param": param,
-            "severity": "HIGH" if err_flag else "MEDIUM",
-            "reason": "Response anomaly detected"
+            "payload": payload,
+            "type": ptype,
+            "severity": "CRITICAL" if score >= 7 else "HIGH",
+            "score": score,
+            "reason": ", ".join(reasons)
         }
 
     return None

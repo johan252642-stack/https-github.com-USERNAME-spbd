@@ -1,33 +1,19 @@
 def analyze_target(url, vulns):
     score = 0
-    chain = []
 
     for v in vulns:
-        if v["severity"] == "CRITICAL":
-            score += 5
-            chain.append("Critical exploit possible")
-        elif v["severity"] == "HIGH":
-            score += 3
-            chain.append("High risk vulnerability")
-        elif v["severity"] == "MEDIUM":
-            score += 2
-        else:
-            score += 1
+        if v["type"] == "sqli":
+            score += 50
+        elif v["type"] == "xss":
+            score += 30
+        elif v["type"] == "lfi":
+            score += 40
+        elif v["type"] == "ssrf":
+            score += 60
 
-    # level score
-    if score >= 10:
-        level = "🔥 CRITICAL"
-    elif score >= 6:
-        level = "⚠ HIGH"
-    elif score >= 3:
-        level = "MEDIUM"
-    else:
-        level = "LOW"
+    level = "LOW"
+    if score > 50: level = "MEDIUM"
+    if score > 100: level = "HIGH"
+    if score > 150: level = "CRITICAL"
 
-    return {
-        "score": {
-            "value": score,
-            "level": level
-        },
-        "chain": chain
-    }
+    return {"score": score, "level": level}

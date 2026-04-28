@@ -1,37 +1,11 @@
-from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer
-from reportlab.lib.styles import getSampleStyleSheet
-import json, os
+def generate_report(data):
+    html = f"""
+    <html><body style='background:#111;color:white;font-family:sans-serif'>
+    <h1>SPBD REPORT</h1>
+    <p>Target: {data['target']}</p>
+    {''.join([f"<p>[{v['severity']}] {v['type']}</p>" for v in data["vulns"]])}
+    </body></html>
+    """
 
-def make_pdf():
-    if not os.path.exists("session.json"):
-        print("No session file")
-        return
-
-    data = json.load(open("session.json"))
-
-    doc = SimpleDocTemplate("report.pdf")
-    styles = getSampleStyleSheet()
-    content = []
-
-    content.append(Paragraph("SPBD Scan Report", styles["Title"]))
-    content.append(Spacer(1, 10))
-
-    for url, vulns in data.get("results", {}).items():
-        content.append(Paragraph(f"<b>{url}</b>", styles["Heading2"]))
-
-        if not vulns:
-            content.append(Paragraph("No issues found", styles["Normal"]))
-
-        for v in vulns:
-            txt = f"""
-            Type: {v.get('type')} <br/>
-            Severity: {v.get('severity')} <br/>
-            Confidence: {v.get('confidence')} <br/>
-            Notes: {", ".join(v.get("notes", []))}<br/><br/>
-            """
-            content.append(Paragraph(txt, styles["Normal"]))
-
-        content.append(Spacer(1, 10))
-
-    doc.build(content)
-    print("[✓] report.pdf created")
+    open("report.html","w").write(html)
+    print("[✓] Report saved")

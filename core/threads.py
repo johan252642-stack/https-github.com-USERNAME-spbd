@@ -1,15 +1,8 @@
-from concurrent.futures import ThreadPoolExecutor, as_completed
+from concurrent.futures import ThreadPoolExecutor
 
-def run_threads(targets, worker, max_threads=10):
+def run_threads(targets, worker):
     results = []
-
-    with ThreadPoolExecutor(max_workers=max_threads) as executor:
-        futures = [executor.submit(worker, t) for t in targets]
-
-        for f in as_completed(futures):
-            try:
-                results.extend(f.result())
-            except:
-                pass
-
+    with ThreadPoolExecutor(max_workers=10) as ex:
+        for r in ex.map(worker, targets):
+            results.extend(r)
     return results

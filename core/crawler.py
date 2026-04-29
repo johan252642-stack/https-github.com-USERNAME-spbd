@@ -2,6 +2,8 @@ import requests
 from bs4 import BeautifulSoup
 from urllib.parse import urljoin
 
+PARAMS = ["id","q","search","page","user"]
+
 def crawl(url):
     urls = set()
 
@@ -16,7 +18,7 @@ def crawl(url):
     except:
         pass
 
-    for p in ["id","page","q","search"]:
-        urls.add(url + f"?{p}=1")
+    for p in PARAMS:
+        urls.add(url + f"?{p}=test")
 
     return list(urls)

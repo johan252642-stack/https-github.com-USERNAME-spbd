@@ -1,36 +1,47 @@
-from urllib.parse import urlparse, parse_qs, urlencode, urlunparse
-from core.ai_engine import ai_score
-from core.utils import get
+import requests
+from core.validator import validate_sqli, validate_xss
 
-PAYLOADS = ["' OR 1=1 --", "<script>alert(1)</script>"]
+def scan_target(url):
+    vulns = []
 
-def inject(url, param, payload):
-    p = urlparse(url)
-    qs = parse_qs(p.query)
-    qs[param] = payload
-    return urlunparse(p._replace(query=urlencode(qs, doseq=True)))
+    payload_sqli = "' OR 1=1 --"
+    payload_xss = "<script>alert(1)</script>"
 
-def scan_target(url, session=None):
-    results = []
+    params = ["q", "search", "id", "user", "page"]
 
-    parsed = urlparse(url)
+    for p in params:
+        try:
+            normal = requests.get(url, timeout=5)
+            inj = requests.get(f"{url}?{p}={payload_sqli}", timeout=5)
 
-    for param in parse_qs(parsed.query):
-        for payload in PAYLOADS:
-            test = inject(url, param, payload)
-            r = get(test, session)
-
-            if not r:
-                continue
-
-            score = ai_score(r.text)
-
-            if score > 2:
-                results.append({
-                    "type": "AI Suspicious",
-                    "param": param,
-                    "payload": payload,
-                    "score": score
+            if validate_sqli(normal, inj):
+                vulns.append({
+                    "type": "SQLi Validated",
+                    "param": p
                 })
 
-    return results
+            rx = requests.get(f"{url}?{p}={payload_xss}", timeout=5)
+
+            if validate_xss(rx, payload_xss):
+                vulns.append({
+                    "type": "XSS Validated",
+                    "param": p
+                })
+
+            # header check
+            if "Content-Security-Policy" not in rx.headers:
+                vulns.append({
+                    "type": "Header Missing",
+                    "detail": "Content-Security-Policy"
+                })
+
+            if "X-Frame-Options" not in rx.headers:
+                vulns.append({
+                    "type": "Header Missing",
+                    "detail": "X-Frame-Options"
+                })
+
+        except:
+            continue
+
+    return vulns

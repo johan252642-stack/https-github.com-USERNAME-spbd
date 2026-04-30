@@ -3,10 +3,11 @@
 echo "[SPBD] AUTO GIT SYNC 🔥"
 
 # ===== CEK INTERNET =====
-ping -c 1 github.com >/dev/null 2>&1 || {
-    echo "[!] Tidak ada internet"
-    exit 1
-}
+echo "[+] Checking internet..."
+
+if ! ping -c 1 8.8.8.8 >/dev/null 2>&1; then
+    echo "[!] Internet bermasalah (lanjut paksa...)"
+fi
 
 # ===== ADD =====
 echo "[+] Adding files..."
